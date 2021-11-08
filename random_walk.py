@@ -25,8 +25,8 @@ class env:
         self.curr_state = self.start_s
 
     def step(self, action):
+        
         reward = 0
-        state = self.curr_state
         stop = False
 
         self.curr_state += action
@@ -62,7 +62,6 @@ def N_Step_TD(rw_env, n, ALPHAS, EPSILON=0.1,  GAMMA=0.95, EPISODES=10,TD_SUM = 
     states = np.zeros(n+1)
     rewards = np.zeros(n+1)
     values = np.zeros((ALPHAS.shape[0], rw_env.num_states))
-    values2 = np.zeros((ALPHAS.shape[0], rw_env.num_states))
     
     #greedy policy
     def greedy_policy(state):
@@ -89,7 +88,7 @@ def N_Step_TD(rw_env, n, ALPHAS, EPSILON=0.1,  GAMMA=0.95, EPISODES=10,TD_SUM = 
                 states[idx] = curr_state
 
                 if stop:
-                    T = curr_time
+                    T = curr_time 
                 else:
                     action = greedy_policy(rw_env.curr_state)
             
@@ -106,7 +105,7 @@ def N_Step_TD(rw_env, n, ALPHAS, EPSILON=0.1,  GAMMA=0.95, EPISODES=10,TD_SUM = 
                 values[ :, int(states[tau % (n + 1)])] += ALPHAS * (G - values[ :, int(states[tau % (n + 1)])])
                 
                 if TD_SUM == True:
-                    TD_ERR_SUM = G - values[ :, int(states[tau % (n + 1)])]        
+                    TD_ERR_SUM += G - values[ :, int(states[tau % (n + 1)])]        
                     values[ :, int(states[tau % (n + 1)])] += ALPHAS * TD_ERR_SUM
     
             if tau >= T - 1:
@@ -118,7 +117,6 @@ def N_Step_TD(rw_env, n, ALPHAS, EPSILON=0.1,  GAMMA=0.95, EPISODES=10,TD_SUM = 
         episode_err[ : , episode] = np.sqrt(np.mean(np.square(values - policy), axis=-1))
 
     #Average errors over episodes and return.
-  
     return np.mean(episode_err, axis=-1)
 
 def run_sim():
@@ -138,27 +136,29 @@ def run_sim():
     for n in N_STEPS:
         print("N: ", n)
         errors = np.zeros((ALPHAS.shape[0], RUNS))
-        errors2 = np.zeros((ALPHAS.shape[0], RUNS))
+        errorsTDS = np.zeros((ALPHAS.shape[0], RUNS))
         for r in range(RUNS):
             errors[ :, r] = N_Step_TD(rw_env, n, ALPHAS, EPSILON, GAMMA, EPISODES,TD_SUM=False)
-            errors2[ :, r] = N_Step_TD(rw_env, n, ALPHAS, EPSILON, GAMMA, EPISODES,TD_SUM=True)
+            errorsTDS[ :, r] = N_Step_TD(rw_env, n, ALPHAS, EPSILON, GAMMA, EPISODES,TD_SUM=True)
         
         #Average the errors over the runs.
         errors = np.mean(errors, axis=-1)
-        errors2 = np.mean(errors, axis=-1)
-        #Plot
-        plt.plot(ALPHAS, errors, label="n = {}".format(n))
-
+        #For TD SUM
+        errorsTDS = np.mean(errorsTDS, axis=-1)
         
+        #Plot
+        # plt.plot(ALPHAS, errors, label="n = {}".format(n))
+        plt.plot(ALPHAS, errorsTDS, label="n2 = {}".format(n))
+      
     print("Done.")
     
     plt.title("N-step TD on {} - state Random Walk".format(NUM_STATES))
     plt.xlabel("Alphas")
     plt.ylabel("Average RMS error over {} states \nand first {} episodes".format(NUM_STATES, EPISODES))
-    plt.ylim([0.25, 0.70])
+    plt.ylim([0.25,3.5])
     plt.legend(loc="upper left", bbox_to_anchor=(1.0, 1), ncol=1)
     plt.tight_layout()
-    plt.savefig("Random_Walk_n_step_TD_2.png")
+    plt.savefig("Random_Walk_n_step_TD_SUM.png")
     plt.close()
 
 if __name__ == "__main__":
