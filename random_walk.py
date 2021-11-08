@@ -45,7 +45,7 @@ Does the N-Step TD method for an alpha value using the random walk example from 
 Inputs: rw_env, ALPHAS, n (for n_steps), EPSILON, GAMMA, EPISODES
 
 ''' 
-def N_Step_TD(rw_env, n, ALPHAS, EPSILON=0.1,  GAMMA=0.95, EPISODES=10):
+def N_Step_TD(rw_env, n, ALPHAS, EPSILON=0.1,  GAMMA=0.95, EPISODES=10,TD_SUM = False):
       
     #policy based on bellman equation
     policy = np.zeros(rw_env.num_states)
@@ -74,6 +74,7 @@ def N_Step_TD(rw_env, n, ALPHAS, EPSILON=0.1,  GAMMA=0.95, EPISODES=10):
         rw_env.reset()
         states[0] = rw_env.curr_state
         action = greedy_policy(rw_env.curr_state)
+        TD_ERR_SUM = 0
         
         curr_time = 0
         T = float('inf')
@@ -101,10 +102,13 @@ def N_Step_TD(rw_env, n, ALPHAS, EPSILON=0.1,  GAMMA=0.95, EPISODES=10):
                     G += pow(GAMMA, i - (tau - 1)) * rewards[i % (n + 1)]
                 if (tau + n) < T:
                     G += pow(GAMMA, n) * values[ :, int(states[(tau + n) % (n + 1)])]
-
+                    
                 values[ :, int(states[tau % (n + 1)])] += ALPHAS * (G - values[ :, int(states[tau % (n + 1)])])
                 
-
+                if TD_SUM == True:
+                    TD_ERR_SUM = G - values[ :, int(states[tau % (n + 1)])]        
+                    values[ :, int(states[tau % (n + 1)])] += ALPHAS * TD_ERR_SUM
+    
             if tau >= T - 1:
                 break
             
@@ -134,17 +138,21 @@ def run_sim():
     for n in N_STEPS:
         print("N: ", n)
         errors = np.zeros((ALPHAS.shape[0], RUNS))
+        errors2 = np.zeros((ALPHAS.shape[0], RUNS))
         for r in range(RUNS):
-            errors[ :, r] = N_Step_TD(rw_env, n, ALPHAS, EPSILON, GAMMA, EPISODES)
+            errors[ :, r] = N_Step_TD(rw_env, n, ALPHAS, EPSILON, GAMMA, EPISODES,TD_SUM=False)
+            errors2[ :, r] = N_Step_TD(rw_env, n, ALPHAS, EPSILON, GAMMA, EPISODES,TD_SUM=True)
         
         #Average the errors over the runs.
         errors = np.mean(errors, axis=-1)
+        errors2 = np.mean(errors, axis=-1)
         #Plot
         plt.plot(ALPHAS, errors, label="n = {}".format(n))
+
         
     print("Done.")
     
-    plt.title("N-step TD on {} -state Random Walk".format(NUM_STATES))
+    plt.title("N-step TD on {} - state Random Walk".format(NUM_STATES))
     plt.xlabel("Alphas")
     plt.ylabel("Average RMS error over {} states \nand first {} episodes".format(NUM_STATES, EPISODES))
     plt.ylim([0.25, 0.70])
