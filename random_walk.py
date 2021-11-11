@@ -1,6 +1,7 @@
 from threading import currentThread
 import numpy as np
 import matplotlib.pyplot as plt
+from numpy.lib import polynomial
 
 '''
 Homework 3: Exercise 7_2
@@ -48,10 +49,9 @@ Inputs: rw_env, ALPHAS, n (for n_steps), EPSILON, GAMMA, EPISODES
 def N_Step_TD(rw_env, n, ALPHAS, EPSILON=0.1,  GAMMA=0.95, EPISODES=10,TD_SUM = False):
       
     #policy based on bellman equation
-    policy = np.zeros(rw_env.num_states)
+    true_val = np.zeros(rw_env.num_states)
     for i in range(1, rw_env.num_states+1):
-        policy[i-1] = i / (rw_env.num_states+1) + (-1 + i/(rw_env.num_states+1))
-    policy[0] = policy[-1] = 0
+        true_val[i-1] = i / (rw_env.num_states+1) + (-1 + i/(rw_env.num_states+1))
     
     #action list
     right = 1
@@ -62,6 +62,8 @@ def N_Step_TD(rw_env, n, ALPHAS, EPSILON=0.1,  GAMMA=0.95, EPISODES=10,TD_SUM = 
     states = np.zeros(n+1)
     rewards = np.zeros(n+1)
     values = np.zeros((ALPHAS.shape[0], rw_env.num_states))
+
+    policy = np.ones(20)
     
     #greedy policy
     def greedy_policy(state):
@@ -79,7 +81,7 @@ def N_Step_TD(rw_env, n, ALPHAS, EPSILON=0.1,  GAMMA=0.95, EPISODES=10,TD_SUM = 
         T = float('inf')
         
         while True:
-            curr_time += 1
+         
             if curr_time < T:
                 stop, reward, curr_state = rw_env.step(action_list[action])
 
@@ -97,24 +99,32 @@ def N_Step_TD(rw_env, n, ALPHAS, EPSILON=0.1,  GAMMA=0.95, EPISODES=10,TD_SUM = 
             if tau >= 0:
                 
                 G = 0.0
-                for i in range((tau + 1), min(tau + n, T) + 1 ):
-                    G += pow(GAMMA, i - (tau - 1)) * rewards[i % (n + 1)]
-                if (tau + n) < T:
-                    G += pow(GAMMA, n) * values[ :, int(states[(tau + n) % (n + 1)])]
-                    
-                values[ :, int(states[tau % (n + 1)])] += ALPHAS * (G - values[ :, int(states[tau % (n + 1)])])
+
                 
                 if TD_SUM == True:
-                    TD_ERR_SUM += G - values[ :, int(states[tau % (n + 1)])]        
-                    values[ :, int(states[tau % (n + 1)])] += ALPHAS * TD_ERR_SUM
+                    for i in range((tau + 1), min(tau + n, T) + 1 ):
+                        G += pow(GAMMA, i - (tau - 1)) * rewards[i % (n + 1)]
+                    if (tau + n) < T:
+                        G += pow(GAMMA, n) * values[ :, int(states[(tau + n) % (n + 1)])]
+                    TD_ERR_SUM += (G - values[ :, int(states[tau % (n + 1)])])
+                    values[ :, int(states[tau % (n + 1)])] += ALPHAS * (TD_ERR_SUM)
+
+                else:
+                    for i in range((tau + 1), min(tau + n, T) + 1 ):
+                        G += pow(GAMMA, i - (tau - 1)) * rewards[i % (n + 1)]
+                    if (tau + n) < T:
+                        G += pow(GAMMA, n) * values[ :, int(states[(tau + n) % (n + 1)])]
+                    values[ :, int(states[tau % (n + 1)])] += ALPHAS * (G - values[ :, int(states[tau % (n + 1)])])
+
     
             if tau >= T - 1:
                 break
+            curr_time += 1
             
         
     
         #Calculate RMS and average the errors over the states.
-        episode_err[ : , episode] = np.sqrt(np.mean(np.square(values - policy), axis=-1))
+        episode_err[ : , episode] = np.sqrt(np.mean(np.square(values - true_val), axis=-1))
 
     #Average errors over episodes and return.
     return np.mean(episode_err, axis=-1)
@@ -138,11 +148,11 @@ def run_sim():
         errors = np.zeros((ALPHAS.shape[0], RUNS))
         errorsTDS = np.zeros((ALPHAS.shape[0], RUNS))
         for r in range(RUNS):
-            errors[ :, r] = N_Step_TD(rw_env, n, ALPHAS, EPSILON, GAMMA, EPISODES,TD_SUM=False)
+            # errors[ :, r] = N_Step_TD(rw_env, n, ALPHAS, EPSILON, GAMMA, EPISODES,TD_SUM=False)
             errorsTDS[ :, r] = N_Step_TD(rw_env, n, ALPHAS, EPSILON, GAMMA, EPISODES,TD_SUM=True)
         
         #Average the errors over the runs.
-        errors = np.mean(errors, axis=-1)
+        # errors = np.mean(errors, axis=-1)
         #For TD SUM
         errorsTDS = np.mean(errorsTDS, axis=-1)
         
